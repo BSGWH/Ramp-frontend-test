@@ -5,9 +5,7 @@ import { useCustomFetch } from "./useCustomFetch"
 
 export function usePaginatedTransactions(): PaginatedTransactionsResult {
   const { fetchWithCache, loading } = useCustomFetch()
-  const [paginatedTransactions, setPaginatedTransactions] = useState<PaginatedResponse<
-    Transaction[]
-  > | null>(null)
+  const [paginatedTransactions, setPaginatedTransactions] = useState<PaginatedResponse<Transaction[]> | null>(null)
 
   const fetchAll = useCallback(async () => {
     const response = await fetchWithCache<PaginatedResponse<Transaction[]>, PaginatedRequestParams>(
@@ -22,7 +20,10 @@ export function usePaginatedTransactions(): PaginatedTransactionsResult {
         return response
       }
 
-      return { data: response.data, nextPage: response.nextPage }
+      return {
+        data: [...(previousResponse.data || []), ...response.data],
+        nextPage: response.nextPage,
+      }
     })
   }, [fetchWithCache, paginatedTransactions])
 

@@ -6,42 +6,56 @@ import { useEmployees } from "./hooks/useEmployees"
 import { usePaginatedTransactions } from "./hooks/usePaginatedTransactions"
 import { useTransactionsByEmployee } from "./hooks/useTransactionsByEmployee"
 import { EMPTY_EMPLOYEE } from "./utils/constants"
-import { Employee } from "./utils/types"
+import { Employee, Transaction } from "./utils/types"
 
 export function App() {
-  const { data: employees, ...employeeUtils } = useEmployees()
-  const { data: paginatedTransactions, ...paginatedTransactionsUtils } = usePaginatedTransactions()
-  const { data: transactionsByEmployee, ...transactionsByEmployeeUtils } = useTransactionsByEmployee()
-  const [isLoading, setIsLoading] = useState(false)
+  const { data: employees, loading: employeesLoading, fetchAll: fetchAllEmployees } = useEmployees()
+  const {
+    data: paginatedTransactions,
+    loading: paginatedLoading,
+    fetchAll: fetchAllPaginatedTransactions,
+  } = usePaginatedTransactions()
+  const { data: transactionsByEmployee, fetchById: fetchTransactionsByEmployee } =
+    useTransactionsByEmployee()
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([])
+  const [hasMoreTransactions, setHasMoreTransactions] = useState(true)
 
-  const transactions = useMemo(
-    () => paginatedTransactions?.data ?? transactionsByEmployee ?? null,
-    [paginatedTransactions, transactionsByEmployee]
-  )
+  useEffect(() => {
+    if (paginatedTransactions?.data) {
+      setAllTransactions((prevTransactions) => [...prevTransactions, ...paginatedTransactions.data])
+      setHasMoreTransactions(paginatedTransactions.nextPage !== null)
+    }
+  }, [paginatedTransactions])
+
+  useEffect(() => {
+    if (transactionsByEmployee) {
+      setAllTransactions(transactionsByEmployee)
+    }
+  }, [transactionsByEmployee])
 
   const loadAllTransactions = useCallback(async () => {
-    setIsLoading(true)
-    transactionsByEmployeeUtils.invalidateData()
-
-    await employeeUtils.fetchAll()
-    await paginatedTransactionsUtils.fetchAll()
-
-    setIsLoading(false)
-  }, [employeeUtils, paginatedTransactionsUtils, transactionsByEmployeeUtils])
+    setAllTransactions([])
+    await fetchAllEmployees()
+    await fetchAllPaginatedTransactions()
+  }, [fetchAllEmployees, fetchAllPaginatedTransactions])
 
   const loadTransactionsByEmployee = useCallback(
     async (employeeId: string) => {
-      paginatedTransactionsUtils.invalidateData()
-      await transactionsByEmployeeUtils.fetchById(employeeId)
+      if (employeeId === "") {
+        await loadAllTransactions()
+      } else {
+        setAllTransactions([])
+        await fetchTransactionsByEmployee(employeeId)
+      }
     },
-    [paginatedTransactionsUtils, transactionsByEmployeeUtils]
+    [loadAllTransactions, fetchTransactionsByEmployee]
   )
 
   useEffect(() => {
-    if (employees === null && !employeeUtils.loading) {
+    if (employees === null && !employeesLoading) {
       loadAllTransactions()
     }
-  }, [employeeUtils.loading, employees, loadAllTransactions])
+  }, [employeesLoading, employees, loadAllTransactions])
 
   return (
     <Fragment>
@@ -51,7 +65,7 @@ export function App() {
         <hr className="RampBreak--l" />
 
         <InputSelect<Employee>
-          isLoading={isLoading}
+          isLoading={employeesLoading}
           defaultValue={EMPTY_EMPLOYEE}
           items={employees === null ? [] : [EMPTY_EMPLOYEE, ...employees]}
           label="Filter by employee"
@@ -72,14 +86,14 @@ export function App() {
         <div className="RampBreak--l" />
 
         <div className="RampGrid">
-          <Transactions transactions={transactions} />
+          <Transactions transactions={allTransactions} />
 
-          {transactions !== null && (
+          {hasMoreTransactions && (
             <button
               className="RampButton"
-              disabled={paginatedTransactionsUtils.loading}
+              disabled={paginatedLoading}
               onClick={async () => {
-                await loadAllTransactions()
+                await fetchAllPaginatedTransactions()
               }}
             >
               View More
