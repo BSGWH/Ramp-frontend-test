@@ -18,6 +18,7 @@ export function App() {
   const { data: transactionsByEmployee, fetchById: fetchTransactionsByEmployee } =
     useTransactionsByEmployee()
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([])
+  const [approvalStatus, setApprovalStatus] = useState<{ [key: string]: boolean }>({})
   const [hasMoreTransactions, setHasMoreTransactions] = useState(true)
 
   useEffect(() => {
@@ -57,6 +58,19 @@ export function App() {
     }
   }, [employeesLoading, employees, loadAllTransactions])
 
+  const handleSetTransactionApproval = async ({
+    transactionId,
+    newValue,
+  }: {
+    transactionId: string
+    newValue: boolean
+  }) => {
+    setApprovalStatus((prevStatus) => ({
+      ...prevStatus,
+      [transactionId]: newValue,
+    }))
+  }
+
   return (
     <Fragment>
       <main className="MainContainer">
@@ -86,7 +100,11 @@ export function App() {
         <div className="RampBreak--l" />
 
         <div className="RampGrid">
-          <Transactions transactions={allTransactions} />
+          <Transactions
+            transactions={allTransactions}
+            approvalStatus={approvalStatus}
+            setTransactionApproval={handleSetTransactionApproval}
+          />
 
           {hasMoreTransactions && (
             <button

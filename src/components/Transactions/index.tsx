@@ -4,17 +4,22 @@ import { SetTransactionApprovalParams } from "src/utils/types"
 import { TransactionPane } from "./TransactionPane"
 import { SetTransactionApprovalFunction, TransactionsComponent } from "./types"
 
-export const Transactions: TransactionsComponent = ({ transactions }) => {
+export const Transactions: TransactionsComponent = ({
+  transactions,
+  approvalStatus,
+  setTransactionApproval,
+}) => {
   const { fetchWithoutCache, loading } = useCustomFetch()
 
-  const setTransactionApproval = useCallback<SetTransactionApprovalFunction>(
+  const handleSetTransactionApproval = useCallback<SetTransactionApprovalFunction>(
     async ({ transactionId, newValue }) => {
       await fetchWithoutCache<void, SetTransactionApprovalParams>("setTransactionApproval", {
         transactionId,
         value: newValue,
       })
+      setTransactionApproval({ transactionId, newValue })
     },
-    [fetchWithoutCache]
+    [fetchWithoutCache, setTransactionApproval]
   )
 
   if (transactions === null) {
@@ -28,7 +33,8 @@ export const Transactions: TransactionsComponent = ({ transactions }) => {
           key={transaction.id}
           transaction={transaction}
           loading={loading}
-          setTransactionApproval={setTransactionApproval}
+          approved={approvalStatus[transaction.id] ?? transaction.approved}
+          setTransactionApproval={handleSetTransactionApproval}
         />
       ))}
     </div>
